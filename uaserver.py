@@ -49,7 +49,7 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                 if metodo == 'INVITE':
                     info_rtp['receptor_IP'] = troceo[7]
                     info_rtp['receptor_Puerto'] = troceo[11]
-
+                    # Envio 100, 180, 200
                     Sip = 'SIP/2.0 '
                     envio = Sip + '100 TRYING' + '\r\n\r\n'
                     envio += Sip + '180 RINGING' + '\r\n\r\n'
@@ -67,8 +67,7 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
              # ACK       
                 elif metodo == 'ACK':
                 
-                # RTP
-                    print info_rtp
+                    # Comienzo RTP
                     os.system("chmod 777 mp32rtp")
                     fichero_audio = dicc['audio_path']
                     aEjecutar = './mp32rtp -i ' + info_rtp['receptor_IP'] + ' -p '
@@ -77,6 +76,12 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                     os.system(aEjecutar)
                     print 'Finaliza RTP' + '\r\n'
                     
+            # BYE
+                elif metodo == 'BYE':
+                    # Envio 200 OK
+                    envio = 'SIP/2.0 200 OK'
+                    print 'Enviando: ' + envio
+                    self.wfile.write(envio)
             else:
                 break
                 
