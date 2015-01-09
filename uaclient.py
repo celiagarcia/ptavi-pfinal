@@ -6,6 +6,8 @@ from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import sys
 import socket
+import os
+import time
 
 class SmallSMILHandler(ContentHandler):
 
@@ -29,7 +31,7 @@ class SmallSMILHandler(ContentHandler):
         return self.diccionario
 
 if __name__ == "__main__":
-  
+    
     # PARAMETROS SHELL
     try:
         FICH = sys.argv[1]
@@ -55,6 +57,8 @@ if __name__ == "__main__":
     except IOError:
         sys.exit('Usage: python uaclient.py config method option')
     dicc = small.get_tags()
+    
+    fich_log = open(dicc['log_path'], 'a')
          
         
 # REGISTER
@@ -109,6 +113,24 @@ if __name__ == "__main__":
             data = my_socket.recv(1024)
             print 'Recibido -- ', data
             
+# ACK
+            datos = data.split()
+            if datos[1] == '100' and datos[4] == '180' and datos[7] == '200':
+                line = 'ACK sip:' + OPTION + ' SIP/2.0'
+                print "Enviando: " + line + '\r\n'
+                my_socket.send(line + '\r\n')                
+                
+            # RTP
+                os.system("chmod 777 mp32rtp")
+                receptor_IP = datos[13]
+                receptor_Puerto = datos[17]
+                fichero_audio = dicc['audio_path']
+                aEjecutar = './mp32rtp -i ' + receptor_IP + ' -p '
+                aEjecutar += receptor_Puerto + ' < ' + fichero_audio
+                print 'Vamos a ejecutar ' + aEjecutar + '\r\n'
+                os.system(aEjecutar)
+                print 'Finaliza RTP' + '\r\n'
+
             print "Terminando socket..."
             my_socket.close()
             print "Fin."
