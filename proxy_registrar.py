@@ -92,7 +92,20 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                         Sip = 'SIP/2.0 '
                         envio = Sip + '404 User Not Found'
                         print 'Enviando: ' + envio
-                        self.wfile.write(envio)  
+                        self.wfile.write(envio)
+                
+            # ACK            
+                elif metodo == 'ACK':
+                    direccion = troceo[1].split(':')[1]
+                    for cliente in clientes:
+                        if cliente == direccion:
+                            uaserver_ip = clientes[cliente][0][0]
+                            uaserver_puerto = clientes[cliente][0][1]
+                            #Reenvio el ACK
+                            self.my_socket.connect((uaserver_ip, int(uaserver_puerto)))
+                            self.my_socket.send(line)
+                            print 'Reenviando ACK a ' + direccion
+                          
             else:
                 break
                 
@@ -130,6 +143,10 @@ if __name__ == "__main__":
     except IOError:
         sys.exit('Usage: python uaclient.py config method option')
     dicc = small.get_tags()
+    
+    fich_log = open(dicc['log_path'], 'a')
+    tiempo = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
+    fich_log.write(tiempo+'\tStarting...\r\n\r\n')
         
     # Creamos servidor register SIP y escuchamos
     serv = SocketServer.UDPServer(("", int(dicc['server_puerto'])), SIPRegisterHandler)
