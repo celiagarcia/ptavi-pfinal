@@ -29,6 +29,29 @@ class SmallSMILHandler(ContentHandler):
                 self.diccionario[clave] = attrs.get(value, "")           
     def get_tags(self):
         return self.diccionario
+        
+        
+class LogClass():
+
+    def __init__(self, fich):
+        self.fich = fich
+
+    def introducir(self, event, msg, ip, port):
+        log_fich = open(self.fich, 'a') 
+        hora = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
+        una_linea = ' '.join(msg.split('\r\n'))
+        if event == ' Starting...' or event == ' Finishing.':
+            linea = hora + event + '\r\n\r\n'
+            log_fich.write(linea)
+        elif event.split(':')[0] == 'Error':
+            linea = hora + ' ' + event + '\r\n'
+            log_fich.write(linea)
+        else:
+            linea = hora + event + ip + ':' + str(port) + ' ' + una_linea + '\r\n'
+            log_fich.write(linea)
+        
+        log_fich.close()
+        
 
 if __name__ == "__main__":
     
@@ -58,14 +81,20 @@ if __name__ == "__main__":
         sys.exit('Usage: python uaclient.py config method option')
     dicc = small.get_tags()
     
-    fich_log = open(dicc['log_path'], 'a')
+    # Creamos log
+    log_fich = dicc['log_path']
+    log = LogClass(log_fich)
     
-    # Creamos un socket
+    # Creamos socket
     my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
 # REGISTER
+    print METODO
     if METODO == 'REGISTER':
+        # Log
+        log.introducir(' Starting...', '', '', '')
+        
         username = dicc['account_username']
         port = dicc['uaserver_puerto']
         linea = METODO + ' sip:' + username + ':' + port + ' SIP/2.0\r\n\r\n'
@@ -77,9 +106,11 @@ if __name__ == "__main__":
             
             print "Enviando: " + linea
             my_socket.send(linea + '\r\n')
+            log.introducir(' Sent to ', linea, dicc['regproxy_ip'], dicc['regproxy_puerto'])
             
             data = my_socket.recv(1024)
             print 'Recibido -- ', data
+            log.introducir(' Received from ', data, dicc['regproxy_ip'], dicc['regproxy_puerto'])
             
             print "Terminando socket..."
             my_socket.close()
@@ -87,10 +118,16 @@ if __name__ == "__main__":
             
         except socket.gaierror:
             com = 'Error: No server listening at '
-            sys.exit(com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto'])
+            frase = com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto']
+            log.introducir(frase, '', '', '')
+            sys.exit(frase)
+            
         except socket.error:
             com = 'Error: No server listening at '
-            sys.exit(com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto'])
+            frase = com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto']
+            log.introducir(frase, '', '', '')
+            sys.exit(frase)
+            
                 
 # INVITE
     elif METODO == 'INVITE':    
@@ -108,16 +145,19 @@ if __name__ == "__main__":
             
             print "Enviando: " + linea
             my_socket.send(linea + '\r\n')
+            log.introducir(' Sent to ', linea, dicc['regproxy_ip'], dicc['regproxy_puerto'])
             
             data = my_socket.recv(1024)
             print 'Recibido -- ', data
+            log.introducir(' Received from ', data, dicc['regproxy_ip'], dicc['regproxy_puerto'])
             
 # ACK
             datos = data.split()
             if datos[1] == '100' and datos[4] == '180' and datos[7] == '200':
                 line = 'ACK sip:' + OPTION + ' SIP/2.0'
                 print "Enviando: " + line + '\r\n'
-                my_socket.send(line + '\r\n')                
+                my_socket.send(line + '\r\n')
+                log.introducir(' Sent to ', line, dicc['regproxy_ip'], dicc['regproxy_puerto'])             
                 
             # RTP
                 os.system("chmod 777 mp32rtp")
@@ -128,6 +168,8 @@ if __name__ == "__main__":
                 aEjecutar += receptor_Puerto + ' < ' + fichero_audio
                 print 'Vamos a ejecutar ' + aEjecutar + '\r\n'
                 os.system(aEjecutar)
+                # Log
+                log.introducir(' Envio RTP...', '', '', '')
                 print 'Finaliza RTP' + '\r\n'
 
             print "Terminando socket..."
@@ -136,10 +178,14 @@ if __name__ == "__main__":
             
         except socket.gaierror:
             com = 'Error: No server listening at '
-            sys.exit(com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto'])
+            frase = com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto']
+            log.introducir(frase, '', '', '')
+            sys.exit(frase)
         except socket.error:
             com = 'Error: No server listening at '
-            sys.exit(com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto'])
+            frase = com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto']
+            log.introducir(frase, '', '', '')
+            sys.exit(frase)
             
 # BYE            
     elif METODO == 'BYE':
@@ -151,24 +197,26 @@ if __name__ == "__main__":
             
             print "Enviando: " + linea
             my_socket.send(linea + '\r\n')
+            log.introducir(' Sent to ', linea, dicc['regproxy_ip'], dicc['regproxy_puerto'])
             
             data = my_socket.recv(1024)
             print 'Recibido -- ', data
+            log.introducir(' Received from ', data, dicc['regproxy_ip'], dicc['regproxy_puerto'])
             
             if data == 'SIP/2.0 200 OK':
                 print "Terminando socket..."
                 my_socket.close()
                 print "Fin."
+                log.introducir(' Finishing.', '', '', '')
             
         except socket.gaierror:
             com = 'Error: No server listening at '
-            sys.exit(com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto'])
+            frase = com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto']
+            log.introducir(frase, '', '', '')
+            sys.exit(frase)
         except socket.error:
             com = 'Error: No server listening at '
-            sys.exit(com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto'])
-    
-    
-    
-    
-    
+            frase = com + dicc['regproxy_ip'] + ' port ' + dicc['regproxy_puerto']
+            log.introducir(frase, '', '', '')
+            sys.exit(frase)
     
