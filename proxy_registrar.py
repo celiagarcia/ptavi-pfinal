@@ -33,10 +33,11 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
 
     def handle(self):
     
+        # Creamos un socket
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     
-        #Actualizo el diccionario
+        # Actualizo el diccionario
         for cliente in clientes.keys():
             caducidad = int(clientes[cliente][1])
             if caducidad <= time.time():
@@ -55,20 +56,21 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                     puerto = troceo[1].split(':')[2]
                     expires = int(troceo[4])
                     caducidad = time.time() + expires
+                    # Envio 200OK
                     print 'Enviando: SIP/2.0 200 OK\r\n\r\n'
                     self.wfile.write('SIP/2.0 200 OK\r\n\r\n')
-                    #Entra cliente
+                    # Entra cliente
                     ip = self.client_address[0]
                     clientes[direccion] = [(ip,puerto), caducidad]
                     self.register2file(clientes)
-                    #Se da de baja cliente
+                    # Se da de baja cliente
                     if expires == 0:
                         del clientes[direccion]
                         self.register2file(clientes)
                         
             # INVITE
                 elif metodo == 'INVITE':
-                    #Ver si el destinatario está registrado
+                    # Ver si el destinatario está registrado
                     direccion = troceo[1].split(':')[1]
                     aux = False
                     for cliente in clientes:
@@ -76,19 +78,19 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                             aux = True
                             uaserver_ip = clientes[cliente][0][0]
                             uaserver_puerto = clientes[cliente][0][1]
-                            #reenvio invite a ua2
+                            # Reenvio invite a ua2
                             self.my_socket.connect((uaserver_ip, int(uaserver_puerto)))
                             self.my_socket.send(line)
                             print 'Reenviando INVITE a ' + direccion
                             data = self.my_socket.recv(1024)
                             print 'Recibido -- ', data
-                            #reenvio lo que recibo a ua1
+                            # Reenvio lo que recibo a ua1
                             self.wfile.write(data)
                             print 'Reenviando: ' + data
                             
                            
                     if aux == False:
-                        #devuelvo 404
+                        # Envio 404
                         Sip = 'SIP/2.0 '
                         envio = Sip + '404 User Not Found'
                         print 'Enviando: ' + envio
@@ -101,11 +103,34 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                         if cliente == direccion:
                             uaserver_ip = clientes[cliente][0][0]
                             uaserver_puerto = clientes[cliente][0][1]
-                            #Reenvio el ACK
+                            # Reenvio el ACK
                             self.my_socket.connect((uaserver_ip, int(uaserver_puerto)))
                             self.my_socket.send(line)
                             print 'Reenviando ACK a ' + direccion
-                          
+                            
+            # BYE                
+                elif metodo == 'BYE':
+                    direccion = troceo[1].split(':')[1]
+                    for cliente in clientes:
+                        if cliente == direccion:
+                            uaserver_ip = clientes[cliente][0][0]
+                            uaserver_puerto = clientes[cliente][0][1]
+                            # Reenvio el ACK
+                            self.my_socket.connect((uaserver_ip, int(uaserver_puerto)))
+                            self.my_socket.send(line)
+                            print 'Reenviando BYE a ' + direccion
+                            data = self.my_socket.recv(1024)
+                            print 'Recibido -- ', data
+                            # Reenvio lo que recibo a ua1
+                            self.wfile.write(data)
+                            print 'Reenviando: ' + data
+                            
+                else:
+                    # Envio 405
+                    Sip = 'SIP/2.0 '
+                    envio = Sip + '405 Method Not Allowed'
+                    print 'Enviando: ' + envio
+                    self.wfile.write(envio)
             else:
                 break
                 
