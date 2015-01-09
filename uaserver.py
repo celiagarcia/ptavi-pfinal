@@ -7,6 +7,9 @@ from xml.sax.handler import ContentHandler
 import sys
 import SocketServer
 import time
+import os
+
+info_rtp = {}
 
 class SmallSMILHandler(ContentHandler):
 
@@ -41,9 +44,12 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                 print "El proxy_registrar nos manda " + line
                 troceo = line.split()
                 metodo = troceo[0]
-                
+
             # INVITE
                 if metodo == 'INVITE':
+                    info_rtp['receptor_IP'] = troceo[7]
+                    info_rtp['receptor_Puerto'] = troceo[11]
+
                     Sip = 'SIP/2.0 '
                     envio = Sip + '100 TRYING' + '\r\n\r\n'
                     envio += Sip + '180 RINGING' + '\r\n\r\n'
@@ -57,7 +63,20 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
 
                     print 'Enviando: ' + envio
                     self.wfile.write(envio)
+                    
+             # ACK       
+                elif metodo == 'ACK':
                 
+                # RTP
+                    print info_rtp
+                    os.system("chmod 777 mp32rtp")
+                    fichero_audio = dicc['audio_path']
+                    aEjecutar = './mp32rtp -i ' + info_rtp['receptor_IP'] + ' -p '
+                    aEjecutar += info_rtp['receptor_Puerto'] + ' < ' + fichero_audio
+                    print 'Vamos a ejecutar ' + aEjecutar + '\r\n'
+                    os.system(aEjecutar)
+                    print 'Finaliza RTP' + '\r\n'
+                    
             else:
                 break
                 
@@ -85,6 +104,8 @@ if __name__ == "__main__":
     except IOError:
         sys.exit('Usage: python uaserver.py config')
     dicc = small.get_tags()
+    
+    fich_log = open(dicc['log_path'], 'a')
     
     # Creamos servidor y escuchamos
     serv = SocketServer.UDPServer(("", int(dicc['uaserver_puerto'])), SIPRegisterHandler)
