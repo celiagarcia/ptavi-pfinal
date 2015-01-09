@@ -8,6 +8,7 @@ from xml.sax.handler import ContentHandler
 import SocketServer
 import time
 import socket
+import uaclient
 
 clientes = {}
 
@@ -56,11 +57,15 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                     puerto = troceo[1].split(':')[2]
                     expires = int(troceo[4])
                     caducidad = time.time() + expires
-                    # Envio 200OK
-                    print 'Enviando: SIP/2.0 200 OK\r\n\r\n'
-                    self.wfile.write('SIP/2.0 200 OK\r\n\r\n')
-                    # Entra cliente
                     ip = self.client_address[0]
+                    puerto_ad = self.client_address[1] 
+                    log.introducir(' Received from ', line, ip, puerto_ad)
+                    # Envio 200OK
+                    envio = 'SIP/2.0 200 OK\r\n\r\n'
+                    print 'Enviando: ' + envio
+                    self.wfile.write(envio)
+                    log.introducir(' Sent to ', envio, ip, puerto_ad)
+                    # Entra cliente
                     clientes[direccion] = [(ip,puerto), caducidad]
                     self.register2file(clientes)
                     # Se da de baja cliente
@@ -72,6 +77,9 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                 elif metodo == 'INVITE':
                     # Ver si el destinatario está registrado
                     direccion = troceo[1].split(':')[1]
+                    mi_ip = self.client_address[0]
+                    mi_puerto = self.client_address[1]
+                    log.introducir(' Received from ', line, mi_ip, mi_puerto)
                     aux = False
                     for cliente in clientes:
                         if cliente == direccion:
@@ -81,24 +89,30 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                             # Reenvio invite a ua2
                             self.my_socket.connect((uaserver_ip, int(uaserver_puerto)))
                             self.my_socket.send(line)
+                            log.introducir(' Sent to ', line, uaserver_ip, uaserver_puerto)
                             print 'Reenviando INVITE a ' + direccion
                             data = self.my_socket.recv(1024)
                             print 'Recibido -- ', data
+                            log.introducir(' Received from ', data, uaserver_ip, uaserver_puerto)
                             # Reenvio lo que recibo a ua1
                             self.wfile.write(data)
                             print 'Reenviando: ' + data
-                            
-                           
+                            log.introducir(' Sent to ', data, mi_ip, mi_puerto)
+                               
                     if aux == False:
                         # Envio 404
                         Sip = 'SIP/2.0 '
                         envio = Sip + '404 User Not Found'
                         print 'Enviando: ' + envio
                         self.wfile.write(envio)
+                        log.introducir(' Sent to ', envio, mi_ip, mi_puerto)
                 
             # ACK            
                 elif metodo == 'ACK':
                     direccion = troceo[1].split(':')[1]
+                    mi_ip = self.client_address[0]
+                    mi_puerto = self.client_address[1]
+                    log.introducir(' Received from ', line, mi_ip, mi_puerto)
                     for cliente in clientes:
                         if cliente == direccion:
                             uaserver_ip = clientes[cliente][0][0]
@@ -107,10 +121,14 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                             self.my_socket.connect((uaserver_ip, int(uaserver_puerto)))
                             self.my_socket.send(line)
                             print 'Reenviando ACK a ' + direccion
+                            log.introducir(' Sent to ', line, uaserver_ip, uaserver_puerto)
                             
             # BYE                
                 elif metodo == 'BYE':
                     direccion = troceo[1].split(':')[1]
+                    mi_ip = self.client_address[0]
+                    mi_puerto = self.client_address[1]
+                    log.introducir(' Received from ', line, mi_ip, mi_puerto)
                     for cliente in clientes:
                         if cliente == direccion:
                             uaserver_ip = clientes[cliente][0][0]
@@ -118,19 +136,25 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                             # Reenvio el ACK
                             self.my_socket.connect((uaserver_ip, int(uaserver_puerto)))
                             self.my_socket.send(line)
+                            log.introducir(' Sent to ', line, uaserver_ip, uaserver_puerto)
                             print 'Reenviando BYE a ' + direccion
                             data = self.my_socket.recv(1024)
                             print 'Recibido -- ', data
+                            log.introducir(' Received from ', data, uaserver_ip, uaserver_puerto)
                             # Reenvio lo que recibo a ua1
                             self.wfile.write(data)
                             print 'Reenviando: ' + data
+                            log.introducir(' Sent to ', data, mi_ip, mi_puerto)
                             
                 else:
                     # Envio 405
+                    mi_ip = self.client_address[0]
+                    mi_puerto = self.client_address[1]
                     Sip = 'SIP/2.0 '
                     envio = Sip + '405 Method Not Allowed'
                     print 'Enviando: ' + envio
                     self.wfile.write(envio)
+                    log.introducir(' Sent to ', envio, mi_ip, mi_puerto)
             else:
                 break
                 
@@ -138,7 +162,8 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
         """
         Vuelca el diccionario en el fichero registered.txt
         """
-        fich = open('registered.txt', 'w')
+        
+        fich = open(dicc['database_path'], 'w')
         fich.write('User\tIP\tPort\tExpires\r\n')
         for cliente in clientes:
             localhost = clientes[cliente][0][0]
@@ -148,7 +173,7 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
             cadena += time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(caduc))
             cadena += '\r\n'
             fich.write(cadena)
-
+            
 if __name__ == "__main__":
 
     # PARAMETROS SHELL
@@ -169,9 +194,10 @@ if __name__ == "__main__":
         sys.exit('Usage: python uaclient.py config method option')
     dicc = small.get_tags()
     
-    fich_log = open(dicc['log_path'], 'a')
-    tiempo = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
-    fich_log.write(tiempo+'\tStarting...\r\n\r\n')
+    # Creamos log
+    log_fich = dicc['log_path']
+    log = uaclient.LogClass(log_fich)
+    log.introducir(' Starting...', '', '', '')
         
     # Creamos servidor register SIP y escuchamos
     serv = SocketServer.UDPServer(("", int(dicc['server_puerto'])), SIPRegisterHandler)
