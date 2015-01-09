@@ -189,12 +189,12 @@ if __name__ == "__main__":
 
         except socket.gaierror:
             com = 'Error: No server listening at '
-            frase = com + pr_ip + ' port ' + pr_puerto
+            frase = com + pr_ip + ' port ' + pr_port
             log.introducir(frase, '', '', '')
             sys.exit(frase)
         except socket.error:
             com = 'Error: No server listening at '
-            frase = com + pr_ip + ' port ' + pr_puerto
+            frase = com + pr_ip + ' port ' + pr_port
             log.introducir(frase, '', '', '')
             sys.exit(frase)
 
