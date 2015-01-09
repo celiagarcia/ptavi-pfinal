@@ -12,40 +12,45 @@ import uaclient
 
 info_rtp = {}
 
+
 class SmallSMILHandler(ContentHandler):
 
     def __init__(self):
         self.diccionario = {}
-        self.etiquetas = ['account','uaserver', 'rtpaudio','regproxy', 'log', 'audio']
+        self.etiquetas = [
+            'account', 'uaserver', 'rtpaudio', 'regproxy', 'log', 'audio']
         self.attributosD = {
             'account': ['username', 'passwd'],
             'uaserver': ['ip', 'puerto'],
             'rtpaudio': ['puerto'],
             'regproxy': ['ip', 'puerto'],
             'log': ['path'],
-            'audio': ['path']
-            }   
+            'audio': ['path']}
+
     def startElement(self, name, attrs):
         if name in self.etiquetas:
             for value in self.attributosD[name]:
                 clave = name + '_' + value
-                self.diccionario[clave] = attrs.get(value, "")           
+                self.diccionario[clave] = attrs.get(value, "")
+
     def get_tags(self):
         return self.diccionario
-        
-        
+
+
 class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
 
     def handle(self):
-    
+
         while 1:
             # Leyendo línea a línea lo que nos envía el cliente
             line = self.rfile.read()
+            pr_ip = dicc['regproxy_ip']
+            pr_port = dicc['regproxy_puerto']
             if line != "":
                 print "El proxy_registrar nos manda " + line
                 troceo = line.split()
                 metodo = troceo[0]
-                log.introducir(' Received from ', line, dicc['regproxy_ip'], dicc['regproxy_puerto'])
+                log.introducir(' Received from ', line, pr_ip, pr_port)
 
             # INVITE
                 if metodo == 'INVITE':
@@ -58,43 +63,46 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                     envio += Sip + '200 OK' + '\r\n'
                     envio += 'Content-Type: application/sdp\r\n\r\n'
                     envio += 'v=0\r\n'
-                    envio += 'o=' + dicc['account_username'] + ' ' + dicc['uaserver_ip'] + '\r\n'
+                    envio += 'o=' + dicc['account_username'] + ' '
+                    envio += dicc['uaserver_ip'] + '\r\n'
                     envio += 's=ptavi-pfinal\r\n'
                     envio += 't=0\r\n'
-                    envio += 'm=audio ' + dicc['rtpaudio_puerto'] + ' RTP\r\n\r\n'
+                    envio += 'm=audio ' + dicc['rtpaudio_puerto']
+                    envio += ' RTP\r\n\r\n'
 
                     print 'Enviando: ' + envio
                     self.wfile.write(envio)
-                    log.introducir(' Sent to ', envio, dicc['regproxy_ip'], dicc['regproxy_puerto'])
-                    
-             # ACK       
+                    log.introducir(' Sent to ', envio, pr_ip, pr_port)
+
+             # ACK
                 elif metodo == 'ACK':
-                
+
                     # Comienzo RTP
                     os.system("chmod 777 mp32rtp")
                     fichero_audio = dicc['audio_path']
-                    aEjecutar = './mp32rtp -i ' + info_rtp['receptor_IP'] + ' -p '
-                    aEjecutar += info_rtp['receptor_Puerto'] + ' < ' + fichero_audio
+                    aEjecutar = './mp32rtp -i ' + info_rtp['receptor_IP']
+                    aEjecutar += ' -p ' + info_rtp['receptor_Puerto']
+                    aEjecutar += ' < ' + fichero_audio
                     print 'Vamos a ejecutar ' + aEjecutar + '\r\n'
                     os.system(aEjecutar)
                     log.introducir(' Envio RTP', '', '', '')
                     print 'Finaliza RTP' + '\r\n'
-                    
+
             # BYE
                 elif metodo == 'BYE':
                     # Envio 200 OK
                     envio = 'SIP/2.0 200 OK'
                     print 'Enviando: ' + envio
                     self.wfile.write(envio)
-                    log.introducir(' Sent to ', envio, dicc['regproxy_ip'], dicc['regproxy_puerto'])
+                    log.introducir(' Sent to ', envio, pr_ip, pr_port)
                     log.introducir(' Finishing.', '', '', '')
 
             else:
                 break
-                
-                
+
+
 if __name__ == "__main__":
-  
+
     # PARAMETROS SHELL
     try:
         FICH = sys.argv[1]
@@ -105,8 +113,8 @@ if __name__ == "__main__":
         sys.exit('Usage: python uaserver.py config')
     except IndexError:
         sys.exit('Usage: python uaserver.py config')
-        
-    # PARSEAR 
+
+    # PARSEAR
     parser = make_parser()
     small = SmallSMILHandler()
     parser.setContentHandler(small)
@@ -115,15 +123,13 @@ if __name__ == "__main__":
     except IOError:
         sys.exit('Usage: python uaserver.py config')
     dicc = small.get_tags()
-    
+
     # Abrimos log
     log_fich = dicc['log_path']
     log = uaclient.LogClass(log_fich)
-    
+
     # Creamos servidor y escuchamos
-    serv = SocketServer.UDPServer(("", int(dicc['uaserver_puerto'])), SIPRegisterHandler)
+    uas_port = dicc['uaserver_puerto']
+    serv = SocketServer.UDPServer(("", int(uas_port)), SIPRegisterHandler)
     print 'Listening...\r\n'
     serv.serve_forever()
-    
-    
-    
