@@ -59,7 +59,10 @@ if __name__ == "__main__":
     dicc = small.get_tags()
     
     fich_log = open(dicc['log_path'], 'a')
-         
+    
+    # Creamos un socket
+    my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
 # REGISTER
     if METODO == 'REGISTER':
@@ -69,9 +72,7 @@ if __name__ == "__main__":
         linea += 'Expires: ' + str(OPTION) + '\r\n\r\n'
         
         try:
-            # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
-            my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # Atamos socket a un servidor/puerto
             my_socket.connect((dicc['regproxy_ip'], int(dicc['regproxy_puerto'])))
             
             print "Enviando: " + linea
@@ -102,9 +103,7 @@ if __name__ == "__main__":
         linea += 'm=audio ' + dicc['rtpaudio_puerto'] + ' RTP\r\n\r\n'
         
         try:
-            # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
-            my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # Atamos socket a un servidor/puerto
             my_socket.connect((dicc['regproxy_ip'], int(dicc['regproxy_puerto'])))
             
             print "Enviando: " + linea
@@ -147,9 +146,7 @@ if __name__ == "__main__":
         linea = METODO + ' sip:' + OPTION + ' SIP/2.0\r\n'
     
         try:
-            # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
-            my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # Atamos socket a un servidor/puerto
             my_socket.connect((dicc['regproxy_ip'], int(dicc['regproxy_puerto'])))
             
             print "Enviando: " + linea
