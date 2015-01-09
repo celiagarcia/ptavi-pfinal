@@ -1,0 +1,5 @@
+<config>
+    <server name="servidor" ip="127.0.0.1" puerto="2020"/>
+    <database path="registered.txt" passwdpath=""/>
+    <log path="pr.log"/>
+</config>
