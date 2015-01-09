@@ -8,6 +8,7 @@ import sys
 import SocketServer
 import time
 import os
+import uaclient
 
 info_rtp = {}
 
@@ -44,6 +45,7 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                 print "El proxy_registrar nos manda " + line
                 troceo = line.split()
                 metodo = troceo[0]
+                log.introducir(' Received from ', line, dicc['regproxy_ip'], dicc['regproxy_puerto'])
 
             # INVITE
                 if metodo == 'INVITE':
@@ -63,6 +65,7 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
 
                     print 'Enviando: ' + envio
                     self.wfile.write(envio)
+                    log.introducir(' Sent to ', envio, dicc['regproxy_ip'], dicc['regproxy_puerto'])
                     
              # ACK       
                 elif metodo == 'ACK':
@@ -74,6 +77,7 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                     aEjecutar += info_rtp['receptor_Puerto'] + ' < ' + fichero_audio
                     print 'Vamos a ejecutar ' + aEjecutar + '\r\n'
                     os.system(aEjecutar)
+                    log.introducir(' Envio RTP', '', '', '')
                     print 'Finaliza RTP' + '\r\n'
                     
             # BYE
@@ -82,11 +86,13 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                     envio = 'SIP/2.0 200 OK'
                     print 'Enviando: ' + envio
                     self.wfile.write(envio)
+                    log.introducir(' Sent to ', envio, dicc['regproxy_ip'], dicc['regproxy_puerto'])
+                    log.introducir(' Finishing.', '', '', '')
+
             else:
                 break
                 
-
-
+                
 if __name__ == "__main__":
   
     # PARAMETROS SHELL
@@ -110,7 +116,9 @@ if __name__ == "__main__":
         sys.exit('Usage: python uaserver.py config')
     dicc = small.get_tags()
     
-    fich_log = open(dicc['log_path'], 'a')
+    # Abrimos log
+    log_fich = dicc['log_path']
+    log = uaclient.LogClass(log_fich)
     
     # Creamos servidor y escuchamos
     serv = SocketServer.UDPServer(("", int(dicc['uaserver_puerto'])), SIPRegisterHandler)
