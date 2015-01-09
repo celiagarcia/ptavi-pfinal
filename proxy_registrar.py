@@ -7,6 +7,7 @@ from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import SocketServer
 import time
+import socket
 
 clientes = {}
 
@@ -32,6 +33,9 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
 
     def handle(self):
     
+        self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
         #Actualizo el diccionario
         for cliente in clientes.keys():
             caducidad = int(clientes[cliente][1])
@@ -45,7 +49,7 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                 troceo = line.split()
                 metodo = troceo[0]
                 
-                # REGISTER
+            # REGISTER
                 if metodo == 'REGISTER':
                     direccion = troceo[1].split(':')[1]
                     puerto = troceo[1].split(':')[2]
@@ -54,19 +58,43 @@ class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
                     print 'Enviando: SIP/2.0 200 OK\r\n\r\n'
                     self.wfile.write('SIP/2.0 200 OK\r\n\r\n')
                     #Entra cliente
-                    clientes[direccion] = [self.client_address, caducidad]
+                    ip = self.client_address[0]
+                    clientes[direccion] = [(ip,puerto), caducidad]
                     self.register2file(clientes)
                     #Se da de baja cliente
                     if expires == 0:
                         del clientes[direccion]
                         self.register2file(clientes)
                         
-                # INVITE
-                elif metodo = 'INVITE':
-                
+            # INVITE
+                elif metodo == 'INVITE':
+                    #Ver si el destinatario está registrado
+                    direccion = troceo[1].split(':')[1]
+                    aux = False
+                    for cliente in clientes:
+                        if cliente == direccion:
+                            aux = True
+                            uaserver_ip = clientes[cliente][0][0]
+                            uaserver_puerto = clientes[cliente][0][1]
+                            #reenvio invite a ua2
+                            self.my_socket.connect((uaserver_ip, int(uaserver_puerto)))
+                            self.my_socket.send(line)
+                            print 'Reenviando INVITE a ' + direccion
+                            data = self.my_socket.recv(1024)
+                            print 'Recibido -- ', data
+                            #reenvio lo que recibo a ua1
+                            self.wfile.write(data)
+                            print 'Reenviando: ' + data
+                            
+                           
+                    if aux == False:
+                        #devuelvo 404
+                        Sip = 'SIP/2.0 '
+                        envio = Sip + '404 User Not Found'
+                        print 'Enviando: ' + envio
+                        self.wfile.write(envio)  
             else:
                 break
-            print clientes
                 
     def register2file(self, clientes):
         """
