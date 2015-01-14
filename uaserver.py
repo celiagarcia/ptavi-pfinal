@@ -13,8 +13,10 @@ import uaclient
 info_rtp = {}
 
 
-class SmallSMILHandler(ContentHandler):
-
+class XMLHandler(ContentHandler):
+    """
+    CLase de lectura de un fichero de configuración XML
+    """
     def __init__(self):
         self.diccionario = {}
         self.etiquetas = [
@@ -116,7 +118,7 @@ if __name__ == "__main__":
 
     # PARSEAR
     parser = make_parser()
-    small = SmallSMILHandler()
+    small = XMLHandler()
     parser.setContentHandler(small)
     try:
         parser.parse(open(FICH))
