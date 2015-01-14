@@ -14,6 +14,9 @@ clientes = {}
 
 
 class SmallSMILHandler(ContentHandler):
+    """
+    Clase para obtener las etiquetas de XML
+    """
 
     def __init__(self):
         self.diccionario = {}
@@ -34,6 +37,9 @@ class SmallSMILHandler(ContentHandler):
 
 
 class SIPRegisterHandler(SocketServer.DatagramRequestHandler):
+    """
+    SIP Server class
+    """
 
     def handle(self):
 
