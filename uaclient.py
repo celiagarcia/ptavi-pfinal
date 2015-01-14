@@ -9,29 +9,7 @@ import socket
 import os
 import time
 
-
-class SmallSMILHandler(ContentHandler):
-
-    def __init__(self):
-        self.diccionario = {}
-        self.etiquetas = [
-            'account', 'uaserver', 'rtpaudio', 'regproxy', 'log', 'audio']
-        self.attributosD = {
-            'account': ['username', 'passwd'],
-            'uaserver': ['ip', 'puerto'],
-            'rtpaudio': ['puerto'],
-            'regproxy': ['ip', 'puerto'],
-            'log': ['path'],
-            'audio': ['path']}
-
-    def startElement(self, name, attrs):
-        if name in self.etiquetas:
-            for value in self.attributosD[name]:
-                clave = name + '_' + value
-                self.diccionario[clave] = attrs.get(value, "")
-
-    def get_tags(self):
-        return self.diccionario
+from uaserver import XMLHandler
 
 
 class LogClass():
@@ -77,7 +55,7 @@ if __name__ == "__main__":
 
     # PARSEAR
     parser = make_parser()
-    small = SmallSMILHandler()
+    small = XMLHandler()
     parser.setContentHandler(small)
     try:
         parser.parse(open(FICH))
